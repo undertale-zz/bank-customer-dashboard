@@ -5,16 +5,23 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, recall_score, f1_score, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    confusion_matrix,
+    ConfusionMatrixDisplay
+)
 
 
 st.set_page_config(
-    page_title="银行客户画像与流失风险分析系统",
+    page_title="银行客户流失风险分析系统",
     layout="wide"
 )
 
-st.title("银行客户画像与流失风险分析系统")
-st.write("本系统基于银行客户数据，支持客户画像分析、客户分层、流失风险识别与业务建议生成。")
+st.title("银行客户流失风险分析系统")
+st.write("本系统基于银行客户数据，支持客户画像分析、流失风险预测、客户分层、高风险客户导出与业务建议生成。")
 
 uploaded_file = st.file_uploader("请上传银行客户 CSV 文件", type=["csv"])
 
@@ -41,43 +48,43 @@ def load_and_prepare_data(file):
     return df
 
 
-def add_customer_segment(df):
-    df = df.copy()
+def generate_customer_segment(row, value_threshold):
+    risk = row.get("churn_risk_probability", 0)
+    balance = row.get("balance", 0)
 
-    balance_threshold = df["balance"].quantile(0.75) if "balance" in df.columns else 0
-    salary_threshold = df["estimatedsalary"].quantile(0.75) if "estimatedsalary" in df.columns else 0
+    if risk >= 0.7 and balance >= value_threshold:
+        return "高风险高价值客户"
+    elif risk >= 0.7:
+        return "高风险普通客户"
+    elif risk < 0.7 and balance >= value_threshold:
+        return "低风险高价值客户"
+    else:
+        return "稳定普通客户"
 
-    def segment_customer(row):
-        if "exited" in df.columns and row.get("exited", 0) == 1:
-            return "已流失客户"
 
-        if (
-            row.get("balance", 0) >= balance_threshold
-            and row.get("numofproducts", 0) >= 2
-            and row.get("isactivemember", 0) == 1
-        ):
-            return "高价值客户"
+def generate_action(row):
+    risk = row.get("churn_risk_probability", 0)
+    balance = row.get("balance", 0)
+    active = row.get("isactivemember", 1)
+    products = row.get("numofproducts", 0)
+    age = row.get("age", 0)
 
-        if (
-            row.get("isactivemember", 1) == 0
-            or row.get("numofproducts", 0) <= 1
-        ):
-            return "潜在流失客户"
-
-        if row.get("estimatedsalary", 0) >= salary_threshold:
-            return "高收入客户"
-
-        return "普通客户"
-
-    df["customer_segment"] = df.apply(segment_customer, axis=1)
-    return df
+    if risk >= 0.7 and balance >= 100000:
+        return "安排VIP客户经理回访，提供专属服务或手续费优惠"
+    elif risk >= 0.7 and active == 0:
+        return "发送客户激活活动，提高客户活跃度"
+    elif risk >= 0.7 and products <= 1:
+        return "推荐合适的银行产品，提高客户粘性"
+    elif risk >= 0.7 and age >= 60:
+        return "提供电话客服或线下服务支持"
+    elif risk >= 0.7:
+        return "进行客户关怀回访，了解潜在流失原因"
+    else:
+        return "保持常规客户维护"
 
 
 if uploaded_file is not None:
     df = load_and_prepare_data(uploaded_file)
-
-    if "balance" in df.columns and "numofproducts" in df.columns and "isactivemember" in df.columns:
-        df = add_customer_segment(df)
 
     st.sidebar.header("筛选条件")
 
@@ -129,13 +136,7 @@ if uploaded_file is not None:
         )
         filtered_df = filtered_df[filtered_df["numofproducts"].isin(selected_products)]
 
-    if "customer_segment" in df.columns:
-        selected_segment = st.sidebar.multiselect(
-            "客户分层",
-            options=sorted(df["customer_segment"].dropna().unique()),
-            default=sorted(df["customer_segment"].dropna().unique())
-        )
-        filtered_df = filtered_df[filtered_df["customer_segment"].isin(selected_segment)]
+    st.header("1. Overview")
 
     st.subheader("数据预览")
     st.dataframe(filtered_df.head())
@@ -167,28 +168,7 @@ if uploaded_file is not None:
     missing_df.columns = ["字段", "缺失值数量"]
     st.dataframe(missing_df)
 
-    st.subheader("客户分层分析")
-
-    if "customer_segment" in filtered_df.columns:
-        segment_count = filtered_df["customer_segment"].value_counts()
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.dataframe(segment_count.reset_index().rename(
-                columns={"index": "客户类型", "customer_segment": "客户数量"}
-            ))
-
-        with col2:
-            fig, ax = plt.subplots()
-            ax.bar(segment_count.index.astype(str), segment_count.values)
-            ax.set_xlabel("Customer Segment")
-            ax.set_ylabel("Number of Customers")
-            ax.set_title("Customer Segmentation")
-            plt.xticks(rotation=30)
-            st.pyplot(fig)
-
-    st.subheader("客户画像分析")
+    st.header("2. Customer Profile")
 
     col1, col2 = st.columns(2)
 
@@ -242,7 +222,7 @@ if uploaded_file is not None:
         ax.set_title("Balance Distribution")
         st.pyplot(fig)
 
-    st.subheader("流失风险分析")
+    st.header("3. Churn Analysis")
 
     if "exited" in filtered_df.columns and len(filtered_df) > 0:
         col1, col2 = st.columns(2)
@@ -302,7 +282,7 @@ if uploaded_file is not None:
     else:
         st.warning("当前数据中没有找到流失标签字段，无法进行流失风险分析。")
 
-    st.subheader("流失预测模型")
+    st.header("4. Prediction Model")
 
     if "exited" in df.columns:
         model_df = df.copy()
@@ -356,7 +336,16 @@ if uploaded_file is not None:
         col3.metric("F1-score", f"{f1_score(y_test, y_pred):.3f}")
         col4.metric("AUC", f"{roc_auc_score(y_test, y_prob):.3f}")
 
-        st.subheader("特征重要性")
+        st.subheader("混淆矩阵 Confusion Matrix")
+
+        cm = confusion_matrix(y_test, y_pred)
+        fig, ax = plt.subplots()
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+        disp.plot(ax=ax)
+        ax.set_title("Confusion Matrix")
+        st.pyplot(fig)
+
+        st.subheader("特征重要性 Feature Importance")
 
         importance = pd.DataFrame({
             "Feature": X.columns,
@@ -372,19 +361,79 @@ if uploaded_file is not None:
         ax.invert_yaxis()
         st.pyplot(fig)
 
-        st.subheader("高风险客户识别与导出")
-
         result_df = df.copy()
 
         predict_df = model_df.drop(columns=["exited"])
         result_df = result_df.loc[model_df.index]
         result_df["churn_risk_probability"] = model.predict_proba(predict_df)[:, 1]
 
-        high_risk = result_df.sort_values(
+        if "balance" in result_df.columns:
+            value_threshold = result_df["balance"].quantile(0.75)
+        else:
+            value_threshold = 0
+
+        result_df["customer_segment"] = result_df.apply(
+            lambda row: generate_customer_segment(row, value_threshold),
+            axis=1
+        )
+
+        result_df["suggested_action"] = result_df.apply(generate_action, axis=1)
+
+        st.header("5. High-Risk Customer List")
+
+        st.subheader("流失风险概率分布")
+
+        fig, ax = plt.subplots()
+        ax.hist(result_df["churn_risk_probability"], bins=20)
+        ax.set_xlabel("Churn Risk Probability")
+        ax.set_ylabel("Number of Customers")
+        ax.set_title("Churn Risk Probability Distribution")
+        st.pyplot(fig)
+
+        st.subheader("Top 10 高风险客户")
+
+        top10 = result_df.sort_values(
             by="churn_risk_probability",
             ascending=False
-        ).head(50)
+        ).head(10)
 
+        if "customerid" in top10.columns:
+            x_values = top10["customerid"].astype(str)
+        else:
+            x_values = top10.index.astype(str)
+
+        fig, ax = plt.subplots()
+        ax.bar(x_values, top10["churn_risk_probability"])
+        ax.set_xlabel("Customer ID")
+        ax.set_ylabel("Churn Risk Probability")
+        ax.set_title("Top 10 High-Risk Customers")
+        plt.xticks(rotation=45)
+        st.pyplot(fig)
+
+        st.subheader("高风险客户识别与导出")
+
+        risk_threshold = st.slider(
+            "选择高风险阈值",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.7,
+            step=0.05
+        )
+
+        top_n = st.selectbox(
+            "选择导出客户数量",
+            options=[10, 20, 50, 100, 200],
+            index=2
+        )
+
+        high_risk = result_df[
+            result_df["churn_risk_probability"] >= risk_threshold
+        ].sort_values(
+            by="churn_risk_probability",
+            ascending=False
+        ).head(top_n)
+
+        st.write(f"当前筛选出 {len(high_risk)} 名高风险客户。")
         st.dataframe(high_risk)
 
         csv = high_risk.to_csv(index=False).encode("utf-8-sig")
@@ -396,12 +445,36 @@ if uploaded_file is not None:
             mime="text/csv"
         )
 
-        st.subheader("业务建议")
+        st.subheader("客户分层分析")
 
-        st.write("1. 对流失风险较高的客户进行客户经理回访或专属服务推荐。")
-        st.write("2. 对高余额但不活跃客户进行重点维护，降低潜在流失风险。")
-        st.write("3. 对仅持有少量产品的客户进行交叉销售，提高客户粘性。")
-        st.write("4. 根据不同年龄段和地区的流失率差异，制定差异化客户维护策略。")
+        if "customer_segment" in result_df.columns:
+            segment_count = result_df["customer_segment"].value_counts()
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                segment_table = segment_count.reset_index()
+                segment_table.columns = ["客户类型", "客户数量"]
+                st.dataframe(segment_table)
+
+            with col2:
+                fig, ax = plt.subplots()
+                ax.bar(segment_count.index.astype(str), segment_count.values)
+                ax.set_xlabel("Customer Segment")
+                ax.set_ylabel("Number of Customers")
+                ax.set_title("Customer Segmentation")
+                plt.xticks(rotation=30)
+                st.pyplot(fig)
+
+        st.header("6. Business Recommendations")
+
+        st.write("本系统根据客户流失概率、账户余额、活跃状态、产品数量和年龄生成客户维护建议。")
+
+        st.write("1. 对高风险高价值客户，优先安排客户经理回访。")
+        st.write("2. 对高风险但不活跃客户，建议发送激活活动或优惠信息。")
+        st.write("3. 对仅持有少量产品的高风险客户，建议进行交叉销售。")
+        st.write("4. 对年龄较大的高风险客户，建议提供电话客服或线下服务支持。")
+        st.write("5. 对低风险高价值客户，建议继续保持长期关系维护。")
 
     else:
         st.warning("当前数据中没有找到流失标签字段，无法训练预测模型。")
