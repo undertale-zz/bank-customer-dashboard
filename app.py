@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import plotly.express as px
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
@@ -26,7 +27,6 @@ plt.rcParams.update({
 
 
 MAIN_COLOR = "#2563eb"
-SECOND_COLOR = "#0f172a"
 GRID_COLOR = "#e5e7eb"
 TEXT_COLOR = "#374151"
 BG_COLOR = "#f8fafc"
@@ -54,6 +54,45 @@ def style_chart(ax):
 def show_chart(fig):
     st.pyplot(fig, use_container_width=False)
     plt.close(fig)
+
+
+def show_interactive_bar(df, x_col, y_col, title, x_label, y_label, is_percent=False, height=320):
+    fig = px.bar(
+        df,
+        x=x_col,
+        y=y_col,
+        text=y_col,
+        title=title
+    )
+
+    if is_percent:
+        fig.update_traces(
+            texttemplate="%{y:.2%}",
+            hovertemplate=f"{x_label}: %{{x}}<br>{y_label}: %{{y:.2%}}<extra></extra>",
+            marker_color=MAIN_COLOR
+        )
+        fig.update_layout(yaxis_tickformat=".0%")
+    else:
+        fig.update_traces(
+            texttemplate="%{y}",
+            hovertemplate=f"{x_label}: %{{x}}<br>{y_label}: %{{y}}<extra></extra>",
+            marker_color=MAIN_COLOR
+        )
+
+    fig.update_traces(textposition="outside")
+
+    fig.update_layout(
+        height=height,
+        margin=dict(l=20, r=20, t=50, b=30),
+        plot_bgcolor="#f8fafc",
+        paper_bgcolor="#ffffff",
+        title=dict(font=dict(size=14)),
+        xaxis_title=x_label,
+        yaxis_title=y_label,
+        font=dict(size=12, color="#374151")
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
 
 st.set_page_config(
@@ -275,22 +314,19 @@ if uploaded_file is not None:
 
     with col2:
         if "geography" in filtered_df.columns:
-            st.subheader("地区客户数量")
+            st.subheader("地区客户数量图")
             geo_count = filtered_df["geography"].value_counts()
-            fig, ax = create_small_chart()
-            ax.bar(
-                geo_count.index.astype(str),
-                geo_count.values,
-                color=MAIN_COLOR,
-                edgecolor="white",
-                linewidth=0.6
+            geo_df = geo_count.reset_index()
+            geo_df.columns = ["Region", "Customers"]
+
+            show_interactive_bar(
+                geo_df,
+                "Region",
+                "Customers",
+                "Customer Count by Region",
+                "Region",
+                "Customers"
             )
-            ax.set_xlabel("Region")
-            ax.set_ylabel("Customers")
-            ax.set_title("Customer Count by Region")
-            plt.xticks(rotation=20)
-            style_chart(ax)
-            show_chart(fig)
 
     col3, col4 = st.columns(2)
 
@@ -314,21 +350,19 @@ if uploaded_file is not None:
 
     with col4:
         if "numofproducts" in filtered_df.columns:
-            st.subheader("产品持有数量分布")
+            st.subheader("产品持有数量图")
             product_count = filtered_df["numofproducts"].value_counts().sort_index()
-            fig, ax = create_small_chart()
-            ax.bar(
-                product_count.index.astype(str),
-                product_count.values,
-                color=MAIN_COLOR,
-                edgecolor="white",
-                linewidth=0.6
+            product_df = product_count.reset_index()
+            product_df.columns = ["Number of Products", "Customers"]
+
+            show_interactive_bar(
+                product_df,
+                "Number of Products",
+                "Customers",
+                "Product Count Distribution",
+                "Number of Products",
+                "Customers"
             )
-            ax.set_xlabel("Number of Products")
-            ax.set_ylabel("Customers")
-            ax.set_title("Product Count Distribution")
-            style_chart(ax)
-            show_chart(fig)
 
     if "balance" in filtered_df.columns:
         st.subheader("客户账户余额分布")
@@ -355,7 +389,7 @@ if uploaded_file is not None:
 
         with col1:
             if "age" in filtered_df.columns:
-                st.subheader("不同年龄段流失率")
+                st.subheader("不同年龄段流失率图")
 
                 filtered_df = filtered_df.copy()
                 filtered_df["age_group"] = pd.cut(
@@ -365,42 +399,36 @@ if uploaded_file is not None:
                 )
 
                 age_churn = filtered_df.groupby("age_group", observed=False)["exited"].mean()
+                age_churn_df = age_churn.reset_index()
+                age_churn_df.columns = ["Age Group", "Churn Rate"]
 
-                fig, ax = create_small_chart()
-                ax.bar(
-                    age_churn.index.astype(str),
-                    age_churn.values,
-                    color=MAIN_COLOR,
-                    edgecolor="white",
-                    linewidth=0.6
+                show_interactive_bar(
+                    age_churn_df,
+                    "Age Group",
+                    "Churn Rate",
+                    "Churn Rate by Age Group",
+                    "Age Group",
+                    "Churn Rate",
+                    is_percent=True
                 )
-                ax.set_xlabel("Age Group")
-                ax.set_ylabel("Churn Rate")
-                ax.set_title("Churn Rate by Age Group")
-                plt.xticks(rotation=20)
-                style_chart(ax)
-                show_chart(fig)
 
         with col2:
             if "geography" in filtered_df.columns:
-                st.subheader("不同地区流失率")
+                st.subheader("不同地区流失率图")
 
                 geo_churn = filtered_df.groupby("geography")["exited"].mean()
+                geo_churn_df = geo_churn.reset_index()
+                geo_churn_df.columns = ["Region", "Churn Rate"]
 
-                fig, ax = create_small_chart()
-                ax.bar(
-                    geo_churn.index.astype(str),
-                    geo_churn.values,
-                    color=MAIN_COLOR,
-                    edgecolor="white",
-                    linewidth=0.6
+                show_interactive_bar(
+                    geo_churn_df,
+                    "Region",
+                    "Churn Rate",
+                    "Churn Rate by Region",
+                    "Region",
+                    "Churn Rate",
+                    is_percent=True
                 )
-                ax.set_xlabel("Region")
-                ax.set_ylabel("Churn Rate")
-                ax.set_title("Churn Rate by Region")
-                plt.xticks(rotation=20)
-                style_chart(ax)
-                show_chart(fig)
 
         col3, col4 = st.columns(2)
 
@@ -605,7 +633,7 @@ if uploaded_file is not None:
             show_chart(fig)
 
         with col2:
-            st.subheader("Top 10 高风险客户")
+            st.subheader("Top 10 高风险客户图")
 
             top10 = dashboard_df.sort_values(
                 by="churn_risk_probability",
@@ -617,20 +645,20 @@ if uploaded_file is not None:
             else:
                 x_values = top10.index.astype(str)
 
-            fig, ax = create_small_chart(width=4.8, height=2.6)
-            ax.bar(
-                x_values,
-                top10["churn_risk_probability"],
-                color=MAIN_COLOR,
-                edgecolor="white",
-                linewidth=0.6
+            top10_df = pd.DataFrame({
+                "Customer ID": x_values,
+                "Risk Probability": top10["churn_risk_probability"].values
+            })
+
+            show_interactive_bar(
+                top10_df,
+                "Customer ID",
+                "Risk Probability",
+                "Top 10 High-Risk Customers",
+                "Customer ID",
+                "Risk Probability",
+                is_percent=True
             )
-            ax.set_xlabel("Customer ID")
-            ax.set_ylabel("Risk Probability")
-            ax.set_title("Top 10 High-Risk Customers")
-            plt.xticks(rotation=30)
-            style_chart(ax)
-            show_chart(fig)
 
         st.subheader("高风险客户筛选与导出")
 
@@ -706,20 +734,17 @@ if uploaded_file is not None:
                 for segment in chart_segment_count.index
             ]
 
-            fig, ax = create_small_chart(width=4.8, height=2.8)
-            ax.bar(
-                chart_segment_count.index.astype(str),
-                chart_segment_count.values,
-                color=MAIN_COLOR,
-                edgecolor="white",
-                linewidth=0.6
+            segment_df = chart_segment_count.reset_index()
+            segment_df.columns = ["Segment", "Customers"]
+
+            show_interactive_bar(
+                segment_df,
+                "Segment",
+                "Customers",
+                "Customer Segmentation",
+                "Segment",
+                "Customers"
             )
-            ax.set_xlabel("Segment")
-            ax.set_ylabel("Customers")
-            ax.set_title("Customer Segmentation")
-            plt.xticks(rotation=20)
-            style_chart(ax)
-            show_chart(fig)
 
         st.divider()
 
