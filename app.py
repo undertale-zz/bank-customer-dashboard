@@ -305,8 +305,8 @@ def show_confusion_matrix(cm):
 uploaded_file = st.file_uploader("请上传银行客户 CSV 文件", type=["csv"])
 
 use_demo_data = st.checkbox(
-    "使用示例数据体验系统（推荐 HR 或无 CSV 文件时使用）",
-    value=True
+    "使用示例数据体验系统（推荐暂时没有数据文件时使用）",
+    value=False
 )
 
 if uploaded_file is not None:
