@@ -15,6 +15,26 @@ from sklearn.metrics import (
 )
 
 
+plt.rcParams.update({
+    "font.size": 8,
+    "axes.titlesize": 10,
+    "axes.labelsize": 8,
+    "xtick.labelsize": 7,
+    "ytick.labelsize": 7,
+    "legend.fontsize": 8
+})
+
+
+def create_small_chart(width=4.2, height=2.6):
+    fig, ax = plt.subplots(figsize=(width, height), dpi=120)
+    return fig, ax
+
+
+def show_chart(fig):
+    st.pyplot(fig, use_container_width=False)
+    plt.close(fig)
+
+
 st.set_page_config(
     page_title="银行客户画像与流失风险分析系统",
     layout="wide"
@@ -86,6 +106,16 @@ def generate_action(row):
         return "保持常规客户维护"
 
 
+def segment_label_for_chart(segment):
+    segment_map = {
+        "高风险高价值客户": "High Risk High Value",
+        "高风险普通客户": "High Risk Normal",
+        "低风险高价值客户": "Low Risk High Value",
+        "稳定普通客户": "Stable Normal"
+    }
+    return segment_map.get(segment, str(segment))
+
+
 if uploaded_file is not None:
     df = load_and_prepare_data(uploaded_file)
 
@@ -142,9 +172,6 @@ if uploaded_file is not None:
 
     st.header("1. 项目概览")
 
-    st.subheader("数据预览")
-    st.dataframe(filtered_df.head())
-
     total_customers = len(filtered_df)
 
     if "exited" in filtered_df.columns and total_customers > 0:
@@ -165,10 +192,13 @@ if uploaded_file is not None:
     else:
         col4.metric("平均账户余额", "N/A")
 
+    st.subheader("数据预览")
+    st.dataframe(filtered_df.head(), use_container_width=True)
+
     st.subheader("缺失值检查")
     missing_df = filtered_df.isnull().sum().reset_index()
     missing_df.columns = ["字段", "缺失值数量"]
-    st.dataframe(missing_df)
+    st.dataframe(missing_df, use_container_width=True)
 
     st.divider()
 
@@ -178,53 +208,58 @@ if uploaded_file is not None:
 
     with col1:
         if "age" in filtered_df.columns:
-            fig, ax = plt.subplots()
+            st.subheader("年龄分布")
+            fig, ax = create_small_chart()
             ax.hist(filtered_df["age"].dropna(), bins=20)
-            ax.set_xlabel("年龄")
-            ax.set_ylabel("客户数量")
-            ax.set_title("年龄分布")
-            st.pyplot(fig)
+            ax.set_xlabel("Age")
+            ax.set_ylabel("Customers")
+            ax.set_title("Age Distribution")
+            show_chart(fig)
 
     with col2:
         if "geography" in filtered_df.columns:
+            st.subheader("地区客户数量")
             geo_count = filtered_df["geography"].value_counts()
-            fig, ax = plt.subplots()
+            fig, ax = create_small_chart()
             ax.bar(geo_count.index.astype(str), geo_count.values)
-            ax.set_xlabel("地区")
-            ax.set_ylabel("客户数量")
-            ax.set_title("不同地区客户数量")
-            st.pyplot(fig)
+            ax.set_xlabel("Region")
+            ax.set_ylabel("Customers")
+            ax.set_title("Customer Count by Region")
+            plt.xticks(rotation=20)
+            show_chart(fig)
 
     col3, col4 = st.columns(2)
 
     with col3:
         if "gender" in filtered_df.columns:
+            st.subheader("性别客户数量")
             gender_count = filtered_df["gender"].value_counts()
-            fig, ax = plt.subplots()
+            fig, ax = create_small_chart()
             ax.bar(gender_count.index.astype(str), gender_count.values)
-            ax.set_xlabel("性别")
-            ax.set_ylabel("客户数量")
-            ax.set_title("不同性别客户数量")
-            st.pyplot(fig)
+            ax.set_xlabel("Gender")
+            ax.set_ylabel("Customers")
+            ax.set_title("Customer Count by Gender")
+            show_chart(fig)
 
     with col4:
         if "numofproducts" in filtered_df.columns:
+            st.subheader("产品持有数量分布")
             product_count = filtered_df["numofproducts"].value_counts().sort_index()
-            fig, ax = plt.subplots()
+            fig, ax = create_small_chart()
             ax.bar(product_count.index.astype(str), product_count.values)
-            ax.set_xlabel("产品持有数量")
-            ax.set_ylabel("客户数量")
-            ax.set_title("产品持有数量分布")
-            st.pyplot(fig)
+            ax.set_xlabel("Number of Products")
+            ax.set_ylabel("Customers")
+            ax.set_title("Product Count Distribution")
+            show_chart(fig)
 
     if "balance" in filtered_df.columns:
         st.subheader("客户账户余额分布")
-        fig, ax = plt.subplots()
+        fig, ax = create_small_chart(width=5.0, height=2.6)
         ax.hist(filtered_df["balance"].dropna(), bins=20)
-        ax.set_xlabel("账户余额")
-        ax.set_ylabel("客户数量")
-        ax.set_title("账户余额分布")
-        st.pyplot(fig)
+        ax.set_xlabel("Balance")
+        ax.set_ylabel("Customers")
+        ax.set_title("Balance Distribution")
+        show_chart(fig)
 
     st.divider()
 
@@ -235,56 +270,66 @@ if uploaded_file is not None:
 
         with col1:
             if "age" in filtered_df.columns:
+                st.subheader("不同年龄段流失率")
+
                 filtered_df = filtered_df.copy()
                 filtered_df["age_group"] = pd.cut(
                     filtered_df["age"],
                     bins=[0, 30, 40, 50, 60, 100],
-                    labels=["30岁以下", "31-40岁", "41-50岁", "51-60岁", "60岁以上"]
+                    labels=["Under 30", "31-40", "41-50", "51-60", "Over 60"]
                 )
 
                 age_churn = filtered_df.groupby("age_group", observed=False)["exited"].mean()
 
-                fig, ax = plt.subplots()
+                fig, ax = create_small_chart()
                 ax.bar(age_churn.index.astype(str), age_churn.values)
-                ax.set_xlabel("年龄段")
-                ax.set_ylabel("流失率")
-                ax.set_title("不同年龄段客户流失率")
-                st.pyplot(fig)
+                ax.set_xlabel("Age Group")
+                ax.set_ylabel("Churn Rate")
+                ax.set_title("Churn Rate by Age Group")
+                plt.xticks(rotation=20)
+                show_chart(fig)
 
         with col2:
             if "geography" in filtered_df.columns:
+                st.subheader("不同地区流失率")
+
                 geo_churn = filtered_df.groupby("geography")["exited"].mean()
 
-                fig, ax = plt.subplots()
+                fig, ax = create_small_chart()
                 ax.bar(geo_churn.index.astype(str), geo_churn.values)
-                ax.set_xlabel("地区")
-                ax.set_ylabel("流失率")
-                ax.set_title("不同地区客户流失率")
-                st.pyplot(fig)
+                ax.set_xlabel("Region")
+                ax.set_ylabel("Churn Rate")
+                ax.set_title("Churn Rate by Region")
+                plt.xticks(rotation=20)
+                show_chart(fig)
 
         col3, col4 = st.columns(2)
 
         with col3:
             if "numofproducts" in filtered_df.columns:
+                st.subheader("不同产品持有数量流失率")
+
                 product_churn = filtered_df.groupby("numofproducts")["exited"].mean()
 
-                fig, ax = plt.subplots()
+                fig, ax = create_small_chart()
                 ax.bar(product_churn.index.astype(str), product_churn.values)
-                ax.set_xlabel("产品持有数量")
-                ax.set_ylabel("流失率")
-                ax.set_title("不同产品持有数量客户流失率")
-                st.pyplot(fig)
+                ax.set_xlabel("Number of Products")
+                ax.set_ylabel("Churn Rate")
+                ax.set_title("Churn Rate by Product Count")
+                show_chart(fig)
 
         with col4:
             if "isactivemember" in filtered_df.columns:
+                st.subheader("不同活跃状态流失率")
+
                 active_churn = filtered_df.groupby("isactivemember")["exited"].mean()
 
-                fig, ax = plt.subplots()
+                fig, ax = create_small_chart()
                 ax.bar(active_churn.index.astype(str), active_churn.values)
-                ax.set_xlabel("是否活跃客户")
-                ax.set_ylabel("流失率")
-                ax.set_title("不同活跃状态客户流失率")
-                st.pyplot(fig)
+                ax.set_xlabel("Active Member")
+                ax.set_ylabel("Churn Rate")
+                ax.set_title("Churn Rate by Active Status")
+                show_chart(fig)
 
     else:
         st.warning("当前数据中没有找到流失标签字段，无法进行流失风险分析。")
@@ -347,30 +392,34 @@ if uploaded_file is not None:
 
         st.caption("召回率在客户流失预测中较为重要，因为银行希望尽可能识别出真正可能流失的客户。")
 
-        st.subheader("混淆矩阵")
+        col1, col2 = st.columns(2)
 
-        cm = confusion_matrix(y_test, y_pred)
-        fig, ax = plt.subplots()
-        disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-        disp.plot(ax=ax)
-        ax.set_title("混淆矩阵")
-        st.pyplot(fig)
+        with col1:
+            st.subheader("混淆矩阵")
+            cm = confusion_matrix(y_test, y_pred)
+            fig, ax = create_small_chart(width=3.2, height=2.8)
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+            disp.plot(ax=ax, colorbar=False)
+            ax.set_title("Confusion Matrix")
+            show_chart(fig)
 
-        st.subheader("特征重要性")
+        with col2:
+            st.subheader("特征重要性")
+            importance = pd.DataFrame({
+                "Feature": X.columns,
+                "Importance": model.feature_importances_
+            }).sort_values(by="Importance", ascending=False)
 
-        importance = pd.DataFrame({
-            "特征": X.columns,
-            "重要性": model.feature_importances_
-        }).sort_values(by="重要性", ascending=False)
+            top_importance = importance.head(8)
 
-        st.dataframe(importance)
+            fig, ax = create_small_chart(width=4.6, height=2.8)
+            ax.barh(top_importance["Feature"], top_importance["Importance"])
+            ax.set_xlabel("Importance")
+            ax.set_title("Top Feature Importance")
+            ax.invert_yaxis()
+            show_chart(fig)
 
-        fig, ax = plt.subplots()
-        ax.barh(importance["特征"], importance["重要性"])
-        ax.set_xlabel("重要性")
-        ax.set_title("特征重要性")
-        ax.invert_yaxis()
-        st.pyplot(fig)
+        st.dataframe(importance, use_container_width=True)
 
         result_df = df.copy()
 
@@ -409,50 +458,58 @@ if uploaded_file is not None:
 
         st.header("5. 高风险客户名单")
 
-        st.subheader("流失风险概率分布")
+        col1, col2 = st.columns(2)
 
-        fig, ax = plt.subplots()
-        ax.hist(result_df["churn_risk_probability"], bins=20)
-        ax.set_xlabel("流失风险概率")
-        ax.set_ylabel("客户数量")
-        ax.set_title("流失风险概率分布")
-        st.pyplot(fig)
+        with col1:
+            st.subheader("流失风险概率分布")
 
-        st.subheader("Top 10 高风险客户")
+            fig, ax = create_small_chart()
+            ax.hist(result_df["churn_risk_probability"], bins=20)
+            ax.set_xlabel("Churn Risk Probability")
+            ax.set_ylabel("Customers")
+            ax.set_title("Churn Risk Distribution")
+            show_chart(fig)
 
-        top10 = result_df.sort_values(
-            by="churn_risk_probability",
-            ascending=False
-        ).head(10)
+        with col2:
+            st.subheader("Top 10 高风险客户")
 
-        if "customerid" in top10.columns:
-            x_values = top10["customerid"].astype(str)
-        else:
-            x_values = top10.index.astype(str)
+            top10 = result_df.sort_values(
+                by="churn_risk_probability",
+                ascending=False
+            ).head(10)
 
-        fig, ax = plt.subplots()
-        ax.bar(x_values, top10["churn_risk_probability"])
-        ax.set_xlabel("客户 ID")
-        ax.set_ylabel("流失风险概率")
-        ax.set_title("Top 10 高风险客户")
-        plt.xticks(rotation=45)
-        st.pyplot(fig)
+            if "customerid" in top10.columns:
+                x_values = top10["customerid"].astype(str)
+            else:
+                x_values = top10.index.astype(str)
+
+            fig, ax = create_small_chart(width=4.8, height=2.6)
+            ax.bar(x_values, top10["churn_risk_probability"])
+            ax.set_xlabel("Customer ID")
+            ax.set_ylabel("Risk Probability")
+            ax.set_title("Top 10 High-Risk Customers")
+            plt.xticks(rotation=30)
+            show_chart(fig)
 
         st.subheader("高风险客户筛选与导出")
 
-        risk_threshold = st.slider(
-            "选择高风险阈值",
-            min_value=0.0,
-            max_value=1.0,
-            value=0.7,
-            step=0.05
-        )
+        col1, col2 = st.columns(2)
 
-        top_n = st.selectbox(
-            "选择导出客户数量",
-            options=[10, 20, 50, 100, 200],
-            index=2
-        )
+        with col1:
+            risk_threshold = st.slider(
+                "选择高风险阈值",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.7,
+                step=0.05
+            )
+
+        with col2:
+            top_n = st.selectbox(
+                "选择导出客户数量",
+                options=[10, 20, 50, 100, 200],
+                index=2
+            )
 
         high_risk = result_df[
             result_df["churn_risk_probability"] >= risk_threshold
@@ -479,7 +536,7 @@ if uploaded_file is not None:
 
         display_cols = [col for col in display_cols if col in high_risk.columns]
 
-        st.dataframe(high_risk[display_cols])
+        st.dataframe(high_risk[display_cols], use_container_width=True)
 
         csv = high_risk.to_csv(index=False).encode("utf-8-sig")
 
@@ -492,24 +549,29 @@ if uploaded_file is not None:
 
         st.subheader("客户分层分析")
 
-        if "customer_segment" in result_df.columns:
-            segment_count = result_df["customer_segment"].value_counts()
+        segment_count = result_df["customer_segment"].value_counts()
+        segment_table = segment_count.reset_index()
+        segment_table.columns = ["客户类型", "客户数量"]
 
-            col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
 
-            with col1:
-                segment_table = segment_count.reset_index()
-                segment_table.columns = ["客户类型", "客户数量"]
-                st.dataframe(segment_table)
+        with col1:
+            st.dataframe(segment_table, use_container_width=True)
 
-            with col2:
-                fig, ax = plt.subplots()
-                ax.bar(segment_count.index.astype(str), segment_count.values)
-                ax.set_xlabel("客户类型")
-                ax.set_ylabel("客户数量")
-                ax.set_title("客户分层结果")
-                plt.xticks(rotation=30)
-                st.pyplot(fig)
+        with col2:
+            chart_segment_count = segment_count.copy()
+            chart_segment_count.index = [
+                segment_label_for_chart(segment)
+                for segment in chart_segment_count.index
+            ]
+
+            fig, ax = create_small_chart(width=4.8, height=2.8)
+            ax.bar(chart_segment_count.index.astype(str), chart_segment_count.values)
+            ax.set_xlabel("Segment")
+            ax.set_ylabel("Customers")
+            ax.set_title("Customer Segmentation")
+            plt.xticks(rotation=20)
+            show_chart(fig)
 
         st.divider()
 
