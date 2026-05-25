@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 import plotly.express as px
+import plotly.graph_objects as go
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
@@ -11,88 +11,13 @@ from sklearn.metrics import (
     recall_score,
     f1_score,
     roc_auc_score,
-    confusion_matrix,
-    ConfusionMatrixDisplay
+    confusion_matrix
 )
 
 
-plt.rcParams.update({
-    "font.size": 8,
-    "axes.titlesize": 10,
-    "axes.labelsize": 8,
-    "xtick.labelsize": 7,
-    "ytick.labelsize": 7,
-    "legend.fontsize": 8
-})
-
-
 MAIN_COLOR = "#2563eb"
-GRID_COLOR = "#e5e7eb"
-TEXT_COLOR = "#374151"
 BG_COLOR = "#f8fafc"
-
-
-def create_small_chart(width=4.2, height=2.6):
-    fig, ax = plt.subplots(figsize=(width, height), dpi=120)
-    fig.patch.set_facecolor("#ffffff")
-    ax.set_facecolor(BG_COLOR)
-    return fig, ax
-
-
-def style_chart(ax):
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    ax.spines["left"].set_color("#d1d5db")
-    ax.spines["bottom"].set_color("#d1d5db")
-    ax.grid(axis="y", linestyle="--", linewidth=0.6, alpha=0.45, color=GRID_COLOR)
-    ax.tick_params(axis="both", colors=TEXT_COLOR, labelsize=7)
-    ax.title.set_color("#111827")
-    ax.xaxis.label.set_color(TEXT_COLOR)
-    ax.yaxis.label.set_color(TEXT_COLOR)
-
-
-def show_chart(fig):
-    st.pyplot(fig, use_container_width=False)
-    plt.close(fig)
-
-
-def show_interactive_bar(df, x_col, y_col, title, x_label, y_label, is_percent=False, height=320):
-    fig = px.bar(
-        df,
-        x=x_col,
-        y=y_col,
-        text=y_col,
-        title=title
-    )
-
-    if is_percent:
-        fig.update_traces(
-            texttemplate="%{y:.2%}",
-            hovertemplate=f"{x_label}: %{{x}}<br>{y_label}: %{{y:.2%}}<extra></extra>",
-            marker_color=MAIN_COLOR
-        )
-        fig.update_layout(yaxis_tickformat=".0%")
-    else:
-        fig.update_traces(
-            texttemplate="%{y}",
-            hovertemplate=f"{x_label}: %{{x}}<br>{y_label}: %{{y}}<extra></extra>",
-            marker_color=MAIN_COLOR
-        )
-
-    fig.update_traces(textposition="outside")
-
-    fig.update_layout(
-        height=height,
-        margin=dict(l=20, r=20, t=50, b=30),
-        plot_bgcolor="#f8fafc",
-        paper_bgcolor="#ffffff",
-        title=dict(font=dict(size=14)),
-        xaxis_title=x_label,
-        yaxis_title=y_label,
-        font=dict(size=12, color="#374151")
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
+TEXT_COLOR = "#374151"
 
 
 st.set_page_config(
@@ -205,6 +130,127 @@ def segment_label_for_chart(segment):
     return segment_map.get(segment, str(segment))
 
 
+def apply_plotly_layout(fig, height=320):
+    fig.update_layout(
+        height=height,
+        margin=dict(l=20, r=20, t=50, b=30),
+        plot_bgcolor=BG_COLOR,
+        paper_bgcolor="#ffffff",
+        title=dict(font=dict(size=14, color="#111827")),
+        font=dict(size=12, color=TEXT_COLOR),
+        hoverlabel=dict(bgcolor="white", font_size=12),
+    )
+    return fig
+
+
+def show_bar_chart(df, x_col, y_col, title, x_label, y_label, is_percent=False, height=320):
+    fig = px.bar(
+        df,
+        x=x_col,
+        y=y_col,
+        text=y_col,
+        title=title
+    )
+
+    if is_percent:
+        fig.update_traces(
+            marker_color=MAIN_COLOR,
+            texttemplate="%{y:.2%}",
+            textposition="outside",
+            hovertemplate=f"{x_label}: %{{x}}<br>{y_label}: %{{y:.2%}}<extra></extra>"
+        )
+        fig.update_layout(yaxis_tickformat=".0%")
+    else:
+        fig.update_traces(
+            marker_color=MAIN_COLOR,
+            texttemplate="%{y}",
+            textposition="outside",
+            hovertemplate=f"{x_label}: %{{x}}<br>{y_label}: %{{y}}<extra></extra>"
+        )
+
+    fig.update_layout(
+        xaxis_title=x_label,
+        yaxis_title=y_label
+    )
+
+    apply_plotly_layout(fig, height)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def show_histogram(df, column, title, x_label, y_label, bins=20, height=320):
+    fig = px.histogram(
+        df,
+        x=column,
+        nbins=bins,
+        title=title
+    )
+
+    fig.update_traces(
+        marker_color=MAIN_COLOR,
+        marker_line_color="white",
+        marker_line_width=0.8,
+        hovertemplate=f"{x_label}: %{{x}}<br>{y_label}: %{{y}}<extra></extra>"
+    )
+
+    fig.update_layout(
+        xaxis_title=x_label,
+        yaxis_title=y_label
+    )
+
+    apply_plotly_layout(fig, height)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def show_horizontal_bar_chart(df, x_col, y_col, title, x_label, y_label, height=320):
+    fig = px.bar(
+        df,
+        x=x_col,
+        y=y_col,
+        orientation="h",
+        text=x_col,
+        title=title
+    )
+
+    fig.update_traces(
+        marker_color=MAIN_COLOR,
+        texttemplate="%{x:.3f}",
+        textposition="outside",
+        hovertemplate=f"{y_label}: %{{y}}<br>{x_label}: %{{x:.4f}}<extra></extra>"
+    )
+
+    fig.update_layout(
+        xaxis_title=x_label,
+        yaxis_title=y_label,
+        yaxis=dict(autorange="reversed")
+    )
+
+    apply_plotly_layout(fig, height)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def show_confusion_matrix(cm):
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=cm,
+            x=["Predicted 0", "Predicted 1"],
+            y=["True 0", "True 1"],
+            colorscale="Blues",
+            text=cm,
+            texttemplate="%{text}",
+            hovertemplate="True Label: %{y}<br>Predicted Label: %{x}<br>Count: %{z}<extra></extra>"
+        )
+    )
+
+    fig.update_layout(
+        title="Confusion Matrix",
+        xaxis_title="Predicted Label",
+        yaxis_title="True Label"
+    )
+
+    apply_plotly_layout(fig, height=320)
+    st.plotly_chart(fig, use_container_width=True)
+
+
 if uploaded_file is not None:
     df = load_and_prepare_data(uploaded_file)
 
@@ -298,19 +344,13 @@ if uploaded_file is not None:
     with col1:
         if "age" in filtered_df.columns:
             st.subheader("年龄分布")
-            fig, ax = create_small_chart()
-            ax.hist(
-                filtered_df["age"].dropna(),
-                bins=20,
-                color=MAIN_COLOR,
-                edgecolor="white",
-                linewidth=0.6
+            show_histogram(
+                filtered_df,
+                "age",
+                "Age Distribution",
+                "Age",
+                "Customers"
             )
-            ax.set_xlabel("Age")
-            ax.set_ylabel("Customers")
-            ax.set_title("Age Distribution")
-            style_chart(ax)
-            show_chart(fig)
 
     with col2:
         if "geography" in filtered_df.columns:
@@ -319,7 +359,7 @@ if uploaded_file is not None:
             geo_df = geo_count.reset_index()
             geo_df.columns = ["Region", "Customers"]
 
-            show_interactive_bar(
+            show_bar_chart(
                 geo_df,
                 "Region",
                 "Customers",
@@ -334,19 +374,17 @@ if uploaded_file is not None:
         if "gender" in filtered_df.columns:
             st.subheader("性别客户数量")
             gender_count = filtered_df["gender"].value_counts()
-            fig, ax = create_small_chart()
-            ax.bar(
-                gender_count.index.astype(str),
-                gender_count.values,
-                color=MAIN_COLOR,
-                edgecolor="white",
-                linewidth=0.6
+            gender_df = gender_count.reset_index()
+            gender_df.columns = ["Gender", "Customers"]
+
+            show_bar_chart(
+                gender_df,
+                "Gender",
+                "Customers",
+                "Customer Count by Gender",
+                "Gender",
+                "Customers"
             )
-            ax.set_xlabel("Gender")
-            ax.set_ylabel("Customers")
-            ax.set_title("Customer Count by Gender")
-            style_chart(ax)
-            show_chart(fig)
 
     with col4:
         if "numofproducts" in filtered_df.columns:
@@ -355,7 +393,7 @@ if uploaded_file is not None:
             product_df = product_count.reset_index()
             product_df.columns = ["Number of Products", "Customers"]
 
-            show_interactive_bar(
+            show_bar_chart(
                 product_df,
                 "Number of Products",
                 "Customers",
@@ -366,19 +404,13 @@ if uploaded_file is not None:
 
     if "balance" in filtered_df.columns:
         st.subheader("客户账户余额分布")
-        fig, ax = create_small_chart(width=5.0, height=2.6)
-        ax.hist(
-            filtered_df["balance"].dropna(),
-            bins=20,
-            color=MAIN_COLOR,
-            edgecolor="white",
-            linewidth=0.6
+        show_histogram(
+            filtered_df,
+            "balance",
+            "Balance Distribution",
+            "Balance",
+            "Customers"
         )
-        ax.set_xlabel("Balance")
-        ax.set_ylabel("Customers")
-        ax.set_title("Balance Distribution")
-        style_chart(ax)
-        show_chart(fig)
 
     st.divider()
 
@@ -402,7 +434,7 @@ if uploaded_file is not None:
                 age_churn_df = age_churn.reset_index()
                 age_churn_df.columns = ["Age Group", "Churn Rate"]
 
-                show_interactive_bar(
+                show_bar_chart(
                     age_churn_df,
                     "Age Group",
                     "Churn Rate",
@@ -420,7 +452,7 @@ if uploaded_file is not None:
                 geo_churn_df = geo_churn.reset_index()
                 geo_churn_df.columns = ["Region", "Churn Rate"]
 
-                show_interactive_bar(
+                show_bar_chart(
                     geo_churn_df,
                     "Region",
                     "Churn Rate",
@@ -437,40 +469,40 @@ if uploaded_file is not None:
                 st.subheader("不同产品持有数量流失率")
 
                 product_churn = filtered_df.groupby("numofproducts")["exited"].mean()
+                product_churn_df = product_churn.reset_index()
+                product_churn_df.columns = ["Number of Products", "Churn Rate"]
 
-                fig, ax = create_small_chart()
-                ax.bar(
-                    product_churn.index.astype(str),
-                    product_churn.values,
-                    color=MAIN_COLOR,
-                    edgecolor="white",
-                    linewidth=0.6
+                show_bar_chart(
+                    product_churn_df,
+                    "Number of Products",
+                    "Churn Rate",
+                    "Churn Rate by Product Count",
+                    "Number of Products",
+                    "Churn Rate",
+                    is_percent=True
                 )
-                ax.set_xlabel("Number of Products")
-                ax.set_ylabel("Churn Rate")
-                ax.set_title("Churn Rate by Product Count")
-                style_chart(ax)
-                show_chart(fig)
 
         with col4:
             if "isactivemember" in filtered_df.columns:
                 st.subheader("不同活跃状态流失率")
 
                 active_churn = filtered_df.groupby("isactivemember")["exited"].mean()
+                active_churn_df = active_churn.reset_index()
+                active_churn_df.columns = ["Active Member", "Churn Rate"]
+                active_churn_df["Active Member"] = active_churn_df["Active Member"].map({
+                    0: "Inactive",
+                    1: "Active"
+                })
 
-                fig, ax = create_small_chart()
-                ax.bar(
-                    active_churn.index.astype(str),
-                    active_churn.values,
-                    color=MAIN_COLOR,
-                    edgecolor="white",
-                    linewidth=0.6
+                show_bar_chart(
+                    active_churn_df,
+                    "Active Member",
+                    "Churn Rate",
+                    "Churn Rate by Active Status",
+                    "Active Member",
+                    "Churn Rate",
+                    is_percent=True
                 )
-                ax.set_xlabel("Active Member")
-                ax.set_ylabel("Churn Rate")
-                ax.set_title("Churn Rate by Active Status")
-                style_chart(ax)
-                show_chart(fig)
 
     else:
         st.warning("当前数据中没有找到流失标签字段，无法进行流失风险分析。")
@@ -538,13 +570,7 @@ if uploaded_file is not None:
         with col1:
             st.subheader("混淆矩阵")
             cm = confusion_matrix(y_test, y_pred)
-            fig, ax = create_small_chart(width=3.2, height=2.8)
-            disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-            disp.plot(ax=ax, colorbar=False, cmap="Blues")
-            ax.set_title("Confusion Matrix")
-            ax.grid(False)
-            ax.set_facecolor("#ffffff")
-            show_chart(fig)
+            show_confusion_matrix(cm)
 
         with col2:
             st.subheader("特征重要性")
@@ -555,19 +581,14 @@ if uploaded_file is not None:
 
             top_importance = importance.head(8)
 
-            fig, ax = create_small_chart(width=4.6, height=2.8)
-            ax.barh(
-                top_importance["Feature"],
-                top_importance["Importance"],
-                color=MAIN_COLOR,
-                edgecolor="white",
-                linewidth=0.6
+            show_horizontal_bar_chart(
+                top_importance,
+                "Importance",
+                "Feature",
+                "Top Feature Importance",
+                "Importance",
+                "Feature"
             )
-            ax.set_xlabel("Importance")
-            ax.set_title("Top Feature Importance")
-            ax.invert_yaxis()
-            style_chart(ax)
-            show_chart(fig)
 
         st.dataframe(importance, use_container_width=True)
 
@@ -617,20 +638,13 @@ if uploaded_file is not None:
 
         with col1:
             st.subheader("流失风险概率分布")
-
-            fig, ax = create_small_chart()
-            ax.hist(
-                dashboard_df["churn_risk_probability"],
-                bins=20,
-                color=MAIN_COLOR,
-                edgecolor="white",
-                linewidth=0.6
+            show_histogram(
+                dashboard_df,
+                "churn_risk_probability",
+                "Churn Risk Distribution",
+                "Churn Risk Probability",
+                "Customers"
             )
-            ax.set_xlabel("Churn Risk Probability")
-            ax.set_ylabel("Customers")
-            ax.set_title("Churn Risk Distribution")
-            style_chart(ax)
-            show_chart(fig)
 
         with col2:
             st.subheader("Top 10 高风险客户图")
@@ -650,7 +664,7 @@ if uploaded_file is not None:
                 "Risk Probability": top10["churn_risk_probability"].values
             })
 
-            show_interactive_bar(
+            show_bar_chart(
                 top10_df,
                 "Customer ID",
                 "Risk Probability",
@@ -737,7 +751,7 @@ if uploaded_file is not None:
             segment_df = chart_segment_count.reset_index()
             segment_df.columns = ["Segment", "Customers"]
 
-            show_interactive_bar(
+            show_bar_chart(
                 segment_df,
                 "Segment",
                 "Customers",
