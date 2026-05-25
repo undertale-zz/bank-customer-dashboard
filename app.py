@@ -25,9 +25,30 @@ plt.rcParams.update({
 })
 
 
+MAIN_COLOR = "#2563eb"
+SECOND_COLOR = "#0f172a"
+GRID_COLOR = "#e5e7eb"
+TEXT_COLOR = "#374151"
+BG_COLOR = "#f8fafc"
+
+
 def create_small_chart(width=4.2, height=2.6):
     fig, ax = plt.subplots(figsize=(width, height), dpi=120)
+    fig.patch.set_facecolor("#ffffff")
+    ax.set_facecolor(BG_COLOR)
     return fig, ax
+
+
+def style_chart(ax):
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_color("#d1d5db")
+    ax.spines["bottom"].set_color("#d1d5db")
+    ax.grid(axis="y", linestyle="--", linewidth=0.6, alpha=0.45, color=GRID_COLOR)
+    ax.tick_params(axis="both", colors=TEXT_COLOR, labelsize=7)
+    ax.title.set_color("#111827")
+    ax.xaxis.label.set_color(TEXT_COLOR)
+    ax.yaxis.label.set_color(TEXT_COLOR)
 
 
 def show_chart(fig):
@@ -41,6 +62,29 @@ st.set_page_config(
 )
 
 st.title("银行客户画像与流失风险分析系统")
+
+st.markdown(
+    """
+    <style>
+    a[href^="#"] {
+        display: none !important;
+    }
+
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+
+    div[data-testid="stMetric"] {
+        background-color: #f8fafc;
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 st.info(
     "本系统用于分析银行客户特征，识别潜在流失客户，并根据客户风险等级和业务价值生成客户维护建议。"
@@ -210,10 +254,17 @@ if uploaded_file is not None:
         if "age" in filtered_df.columns:
             st.subheader("年龄分布")
             fig, ax = create_small_chart()
-            ax.hist(filtered_df["age"].dropna(), bins=20)
+            ax.hist(
+                filtered_df["age"].dropna(),
+                bins=20,
+                color=MAIN_COLOR,
+                edgecolor="white",
+                linewidth=0.6
+            )
             ax.set_xlabel("Age")
             ax.set_ylabel("Customers")
             ax.set_title("Age Distribution")
+            style_chart(ax)
             show_chart(fig)
 
     with col2:
@@ -221,11 +272,18 @@ if uploaded_file is not None:
             st.subheader("地区客户数量")
             geo_count = filtered_df["geography"].value_counts()
             fig, ax = create_small_chart()
-            ax.bar(geo_count.index.astype(str), geo_count.values)
+            ax.bar(
+                geo_count.index.astype(str),
+                geo_count.values,
+                color=MAIN_COLOR,
+                edgecolor="white",
+                linewidth=0.6
+            )
             ax.set_xlabel("Region")
             ax.set_ylabel("Customers")
             ax.set_title("Customer Count by Region")
             plt.xticks(rotation=20)
+            style_chart(ax)
             show_chart(fig)
 
     col3, col4 = st.columns(2)
@@ -235,10 +293,17 @@ if uploaded_file is not None:
             st.subheader("性别客户数量")
             gender_count = filtered_df["gender"].value_counts()
             fig, ax = create_small_chart()
-            ax.bar(gender_count.index.astype(str), gender_count.values)
+            ax.bar(
+                gender_count.index.astype(str),
+                gender_count.values,
+                color=MAIN_COLOR,
+                edgecolor="white",
+                linewidth=0.6
+            )
             ax.set_xlabel("Gender")
             ax.set_ylabel("Customers")
             ax.set_title("Customer Count by Gender")
+            style_chart(ax)
             show_chart(fig)
 
     with col4:
@@ -246,19 +311,33 @@ if uploaded_file is not None:
             st.subheader("产品持有数量分布")
             product_count = filtered_df["numofproducts"].value_counts().sort_index()
             fig, ax = create_small_chart()
-            ax.bar(product_count.index.astype(str), product_count.values)
+            ax.bar(
+                product_count.index.astype(str),
+                product_count.values,
+                color=MAIN_COLOR,
+                edgecolor="white",
+                linewidth=0.6
+            )
             ax.set_xlabel("Number of Products")
             ax.set_ylabel("Customers")
             ax.set_title("Product Count Distribution")
+            style_chart(ax)
             show_chart(fig)
 
     if "balance" in filtered_df.columns:
         st.subheader("客户账户余额分布")
         fig, ax = create_small_chart(width=5.0, height=2.6)
-        ax.hist(filtered_df["balance"].dropna(), bins=20)
+        ax.hist(
+            filtered_df["balance"].dropna(),
+            bins=20,
+            color=MAIN_COLOR,
+            edgecolor="white",
+            linewidth=0.6
+        )
         ax.set_xlabel("Balance")
         ax.set_ylabel("Customers")
         ax.set_title("Balance Distribution")
+        style_chart(ax)
         show_chart(fig)
 
     st.divider()
@@ -282,11 +361,18 @@ if uploaded_file is not None:
                 age_churn = filtered_df.groupby("age_group", observed=False)["exited"].mean()
 
                 fig, ax = create_small_chart()
-                ax.bar(age_churn.index.astype(str), age_churn.values)
+                ax.bar(
+                    age_churn.index.astype(str),
+                    age_churn.values,
+                    color=MAIN_COLOR,
+                    edgecolor="white",
+                    linewidth=0.6
+                )
                 ax.set_xlabel("Age Group")
                 ax.set_ylabel("Churn Rate")
                 ax.set_title("Churn Rate by Age Group")
                 plt.xticks(rotation=20)
+                style_chart(ax)
                 show_chart(fig)
 
         with col2:
@@ -296,11 +382,18 @@ if uploaded_file is not None:
                 geo_churn = filtered_df.groupby("geography")["exited"].mean()
 
                 fig, ax = create_small_chart()
-                ax.bar(geo_churn.index.astype(str), geo_churn.values)
+                ax.bar(
+                    geo_churn.index.astype(str),
+                    geo_churn.values,
+                    color=MAIN_COLOR,
+                    edgecolor="white",
+                    linewidth=0.6
+                )
                 ax.set_xlabel("Region")
                 ax.set_ylabel("Churn Rate")
                 ax.set_title("Churn Rate by Region")
                 plt.xticks(rotation=20)
+                style_chart(ax)
                 show_chart(fig)
 
         col3, col4 = st.columns(2)
@@ -312,10 +405,17 @@ if uploaded_file is not None:
                 product_churn = filtered_df.groupby("numofproducts")["exited"].mean()
 
                 fig, ax = create_small_chart()
-                ax.bar(product_churn.index.astype(str), product_churn.values)
+                ax.bar(
+                    product_churn.index.astype(str),
+                    product_churn.values,
+                    color=MAIN_COLOR,
+                    edgecolor="white",
+                    linewidth=0.6
+                )
                 ax.set_xlabel("Number of Products")
                 ax.set_ylabel("Churn Rate")
                 ax.set_title("Churn Rate by Product Count")
+                style_chart(ax)
                 show_chart(fig)
 
         with col4:
@@ -325,10 +425,17 @@ if uploaded_file is not None:
                 active_churn = filtered_df.groupby("isactivemember")["exited"].mean()
 
                 fig, ax = create_small_chart()
-                ax.bar(active_churn.index.astype(str), active_churn.values)
+                ax.bar(
+                    active_churn.index.astype(str),
+                    active_churn.values,
+                    color=MAIN_COLOR,
+                    edgecolor="white",
+                    linewidth=0.6
+                )
                 ax.set_xlabel("Active Member")
                 ax.set_ylabel("Churn Rate")
                 ax.set_title("Churn Rate by Active Status")
+                style_chart(ax)
                 show_chart(fig)
 
     else:
@@ -399,8 +506,10 @@ if uploaded_file is not None:
             cm = confusion_matrix(y_test, y_pred)
             fig, ax = create_small_chart(width=3.2, height=2.8)
             disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-            disp.plot(ax=ax, colorbar=False)
+            disp.plot(ax=ax, colorbar=False, cmap="Blues")
             ax.set_title("Confusion Matrix")
+            ax.grid(False)
+            ax.set_facecolor("#ffffff")
             show_chart(fig)
 
         with col2:
@@ -413,10 +522,17 @@ if uploaded_file is not None:
             top_importance = importance.head(8)
 
             fig, ax = create_small_chart(width=4.6, height=2.8)
-            ax.barh(top_importance["Feature"], top_importance["Importance"])
+            ax.barh(
+                top_importance["Feature"],
+                top_importance["Importance"],
+                color=MAIN_COLOR,
+                edgecolor="white",
+                linewidth=0.6
+            )
             ax.set_xlabel("Importance")
             ax.set_title("Top Feature Importance")
             ax.invert_yaxis()
+            style_chart(ax)
             show_chart(fig)
 
         st.dataframe(importance, use_container_width=True)
@@ -439,15 +555,20 @@ if uploaded_file is not None:
 
         result_df["suggested_action"] = result_df.apply(generate_action, axis=1)
 
-        high_risk_default_count = (result_df["churn_risk_probability"] >= 0.7).sum()
+        dashboard_df = result_df[result_df.index.isin(filtered_df.index)]
+
+        if len(dashboard_df) == 0:
+            dashboard_df = result_df.copy()
+
+        high_risk_default_count = (dashboard_df["churn_risk_probability"] >= 0.7).sum()
 
         st.subheader("预测后客户概览")
 
         col1, col2, col3, col4 = st.columns(4)
 
-        col1.metric("总客户数", len(result_df))
+        col1.metric("总客户数", len(dashboard_df))
         col2.metric("高风险客户数", int(high_risk_default_count))
-        col3.metric("平均流失风险", f"{result_df['churn_risk_probability'].mean():.2%}")
+        col3.metric("平均流失风险", f"{dashboard_df['churn_risk_probability'].mean():.2%}")
 
         if "balance" in result_df.columns:
             col4.metric("高价值客户阈值", f"{value_threshold:,.2f}")
@@ -464,16 +585,23 @@ if uploaded_file is not None:
             st.subheader("流失风险概率分布")
 
             fig, ax = create_small_chart()
-            ax.hist(result_df["churn_risk_probability"], bins=20)
+            ax.hist(
+                dashboard_df["churn_risk_probability"],
+                bins=20,
+                color=MAIN_COLOR,
+                edgecolor="white",
+                linewidth=0.6
+            )
             ax.set_xlabel("Churn Risk Probability")
             ax.set_ylabel("Customers")
             ax.set_title("Churn Risk Distribution")
+            style_chart(ax)
             show_chart(fig)
 
         with col2:
             st.subheader("Top 10 高风险客户")
 
-            top10 = result_df.sort_values(
+            top10 = dashboard_df.sort_values(
                 by="churn_risk_probability",
                 ascending=False
             ).head(10)
@@ -484,11 +612,18 @@ if uploaded_file is not None:
                 x_values = top10.index.astype(str)
 
             fig, ax = create_small_chart(width=4.8, height=2.6)
-            ax.bar(x_values, top10["churn_risk_probability"])
+            ax.bar(
+                x_values,
+                top10["churn_risk_probability"],
+                color=MAIN_COLOR,
+                edgecolor="white",
+                linewidth=0.6
+            )
             ax.set_xlabel("Customer ID")
             ax.set_ylabel("Risk Probability")
             ax.set_title("Top 10 High-Risk Customers")
             plt.xticks(rotation=30)
+            style_chart(ax)
             show_chart(fig)
 
         st.subheader("高风险客户筛选与导出")
@@ -511,8 +646,8 @@ if uploaded_file is not None:
                 index=2
             )
 
-        high_risk = result_df[
-            result_df["churn_risk_probability"] >= risk_threshold
+        high_risk = dashboard_df[
+            dashboard_df["churn_risk_probability"] >= risk_threshold
         ].sort_values(
             by="churn_risk_probability",
             ascending=False
@@ -549,7 +684,7 @@ if uploaded_file is not None:
 
         st.subheader("客户分层分析")
 
-        segment_count = result_df["customer_segment"].value_counts()
+        segment_count = dashboard_df["customer_segment"].value_counts()
         segment_table = segment_count.reset_index()
         segment_table.columns = ["客户类型", "客户数量"]
 
@@ -566,11 +701,18 @@ if uploaded_file is not None:
             ]
 
             fig, ax = create_small_chart(width=4.8, height=2.8)
-            ax.bar(chart_segment_count.index.astype(str), chart_segment_count.values)
+            ax.bar(
+                chart_segment_count.index.astype(str),
+                chart_segment_count.values,
+                color=MAIN_COLOR,
+                edgecolor="white",
+                linewidth=0.6
+            )
             ax.set_xlabel("Segment")
             ax.set_ylabel("Customers")
             ax.set_title("Customer Segmentation")
             plt.xticks(rotation=20)
+            style_chart(ax)
             show_chart(fig)
 
         st.divider()
