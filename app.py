@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -60,7 +61,57 @@ st.info(
     "本系统用于分析银行客户特征，识别潜在流失客户，并根据客户风险等级和业务价值生成客户维护建议。"
 )
 
-uploaded_file = st.file_uploader("请上传银行客户 CSV 文件", type=["csv"])
+
+def create_demo_data(n=10000, random_state=42):
+    np.random.seed(random_state)
+
+    geography = np.random.choice(["France", "Germany", "Spain"], size=n, p=[0.50, 0.25, 0.25])
+    gender = np.random.choice(["Male", "Female"], size=n, p=[0.55, 0.45])
+    age = np.clip(np.random.normal(39, 10, n).astype(int), 18, 92)
+    creditscore = np.clip(np.random.normal(650, 95, n).astype(int), 350, 850)
+    balance = np.random.choice(
+        [0, 1],
+        size=n,
+        p=[0.36, 0.64]
+    ) * np.random.normal(120000, 45000, n)
+    balance = np.clip(balance, 0, 250000).round(2)
+    estimatedsalary = np.random.uniform(10000, 200000, n).round(2)
+    numofproducts = np.random.choice([1, 2, 3, 4], size=n, p=[0.50, 0.42, 0.06, 0.02])
+    hascrcard = np.random.choice([0, 1], size=n, p=[0.30, 0.70])
+    isactivemember = np.random.choice([0, 1], size=n, p=[0.48, 0.52])
+    tenure = np.random.randint(0, 11, size=n)
+
+    risk_score = (
+        0.02 * (age - 40)
+        + 0.000003 * balance
+        - 0.8 * isactivemember
+        + 0.45 * (numofproducts == 1)
+        + 0.75 * (numofproducts >= 3)
+        + 0.35 * (geography == "Germany")
+        - 0.0015 * (creditscore - 650)
+    )
+
+    probability = 1 / (1 + np.exp(-risk_score))
+    exited = np.random.binomial(1, probability)
+
+    df = pd.DataFrame({
+        "rownumber": np.arange(1, n + 1),
+        "customerid": np.arange(15600000, 15600000 + n),
+        "surname": ["DemoCustomer"] * n,
+        "creditscore": creditscore,
+        "geography": geography,
+        "gender": gender,
+        "age": age,
+        "tenure": tenure,
+        "balance": balance,
+        "numofproducts": numofproducts,
+        "hascrcard": hascrcard,
+        "isactivemember": isactivemember,
+        "estimatedsalary": estimatedsalary,
+        "exited": exited
+    })
+
+    return df
 
 
 def load_and_prepare_data(file):
@@ -251,8 +302,32 @@ def show_confusion_matrix(cm):
     st.plotly_chart(fig, use_container_width=True)
 
 
+uploaded_file = st.file_uploader("请上传银行客户 CSV 文件", type=["csv"])
+
+use_demo_data = st.checkbox(
+    "使用示例数据体验系统（推荐 HR 或无 CSV 文件时使用）",
+    value=True
+)
+
 if uploaded_file is not None:
     df = load_and_prepare_data(uploaded_file)
+    st.success("已使用上传的 CSV 数据进行分析。")
+elif use_demo_data:
+    df = create_demo_data()
+    st.success("当前正在使用系统内置示例数据进行展示。")
+else:
+    df = None
+
+
+if df is not None:
+    demo_csv = df.to_csv(index=False).encode("utf-8-sig")
+
+    st.download_button(
+        label="下载当前示例数据 CSV",
+        data=demo_csv,
+        file_name="bank_customer_demo_data.csv",
+        mime="text/csv"
+    )
 
     st.sidebar.title("筛选条件")
     st.sidebar.write("可通过以下条件查看不同客户群体的特征和流失风险。")
@@ -776,4 +851,4 @@ if uploaded_file is not None:
         st.warning("当前数据中没有找到流失标签字段，无法训练预测模型。")
 
 else:
-    st.info("请先上传 CSV 文件。")
+    st.info("请上传 CSV 文件，或勾选“使用示例数据体验系统”。")
