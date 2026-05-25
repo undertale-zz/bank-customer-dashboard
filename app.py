@@ -71,8 +71,14 @@ st.markdown(
     }
 
     .block-container {
-        padding-top: 2rem;
+        padding-top: 4rem !important;
         padding-bottom: 2rem;
+    }
+
+    h1 {
+        line-height: 1.25 !important;
+        padding-top: 0.5rem !important;
+        overflow: visible !important;
     }
 
     div[data-testid="stMetric"] {
