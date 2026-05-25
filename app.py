@@ -16,12 +16,15 @@ from sklearn.metrics import (
 
 
 st.set_page_config(
-    page_title="银行客户流失风险分析系统",
+    page_title="银行客户画像与流失风险分析系统",
     layout="wide"
 )
 
-st.title("银行客户流失风险分析系统")
-st.write("本系统基于银行客户数据，支持客户画像分析、流失风险预测、客户分层、高风险客户导出与业务建议生成。")
+st.title("银行客户画像与流失风险分析系统")
+
+st.info(
+    "本系统用于分析银行客户特征，识别潜在流失客户，并根据客户风险等级和业务价值生成客户维护建议。"
+)
 
 uploaded_file = st.file_uploader("请上传银行客户 CSV 文件", type=["csv"])
 
@@ -70,7 +73,7 @@ def generate_action(row):
     age = row.get("age", 0)
 
     if risk >= 0.7 and balance >= 100000:
-        return "安排VIP客户经理回访，提供专属服务或手续费优惠"
+        return "安排 VIP 客户经理回访，提供专属服务或手续费优惠"
     elif risk >= 0.7 and active == 0:
         return "发送客户激活活动，提高客户活跃度"
     elif risk >= 0.7 and products <= 1:
@@ -86,7 +89,8 @@ def generate_action(row):
 if uploaded_file is not None:
     df = load_and_prepare_data(uploaded_file)
 
-    st.sidebar.header("筛选条件")
+    st.sidebar.title("筛选条件")
+    st.sidebar.write("可通过以下条件查看不同客户群体的特征和流失风险。")
 
     filtered_df = df.copy()
 
@@ -136,12 +140,10 @@ if uploaded_file is not None:
         )
         filtered_df = filtered_df[filtered_df["numofproducts"].isin(selected_products)]
 
-    st.header("1. Overview")
+    st.header("1. 项目概览")
 
     st.subheader("数据预览")
     st.dataframe(filtered_df.head())
-
-    st.subheader("数据基本信息")
 
     total_customers = len(filtered_df)
 
@@ -159,16 +161,18 @@ if uploaded_file is not None:
     col3.metric("流失率", f"{churn_rate:.2%}")
 
     if "balance" in filtered_df.columns and total_customers > 0:
-        col4.metric("平均余额", f"{filtered_df['balance'].mean():,.2f}")
+        col4.metric("平均账户余额", f"{filtered_df['balance'].mean():,.2f}")
     else:
-        col4.metric("平均余额", "N/A")
+        col4.metric("平均账户余额", "N/A")
 
     st.subheader("缺失值检查")
     missing_df = filtered_df.isnull().sum().reset_index()
     missing_df.columns = ["字段", "缺失值数量"]
     st.dataframe(missing_df)
 
-    st.header("2. Customer Profile")
+    st.divider()
+
+    st.header("2. 客户画像分析")
 
     col1, col2 = st.columns(2)
 
@@ -176,9 +180,9 @@ if uploaded_file is not None:
         if "age" in filtered_df.columns:
             fig, ax = plt.subplots()
             ax.hist(filtered_df["age"].dropna(), bins=20)
-            ax.set_xlabel("Age")
-            ax.set_ylabel("Number of Customers")
-            ax.set_title("Age Distribution")
+            ax.set_xlabel("年龄")
+            ax.set_ylabel("客户数量")
+            ax.set_title("年龄分布")
             st.pyplot(fig)
 
     with col2:
@@ -186,9 +190,9 @@ if uploaded_file is not None:
             geo_count = filtered_df["geography"].value_counts()
             fig, ax = plt.subplots()
             ax.bar(geo_count.index.astype(str), geo_count.values)
-            ax.set_xlabel("Region")
-            ax.set_ylabel("Number of Customers")
-            ax.set_title("Customer Distribution by Region")
+            ax.set_xlabel("地区")
+            ax.set_ylabel("客户数量")
+            ax.set_title("不同地区客户数量")
             st.pyplot(fig)
 
     col3, col4 = st.columns(2)
@@ -198,9 +202,9 @@ if uploaded_file is not None:
             gender_count = filtered_df["gender"].value_counts()
             fig, ax = plt.subplots()
             ax.bar(gender_count.index.astype(str), gender_count.values)
-            ax.set_xlabel("Gender")
-            ax.set_ylabel("Number of Customers")
-            ax.set_title("Customer Distribution by Gender")
+            ax.set_xlabel("性别")
+            ax.set_ylabel("客户数量")
+            ax.set_title("不同性别客户数量")
             st.pyplot(fig)
 
     with col4:
@@ -208,40 +212,43 @@ if uploaded_file is not None:
             product_count = filtered_df["numofproducts"].value_counts().sort_index()
             fig, ax = plt.subplots()
             ax.bar(product_count.index.astype(str), product_count.values)
-            ax.set_xlabel("Number of Products")
-            ax.set_ylabel("Number of Customers")
-            ax.set_title("Customer Distribution by Number of Products")
+            ax.set_xlabel("产品持有数量")
+            ax.set_ylabel("客户数量")
+            ax.set_title("产品持有数量分布")
             st.pyplot(fig)
 
     if "balance" in filtered_df.columns:
-        st.subheader("客户余额分布")
+        st.subheader("客户账户余额分布")
         fig, ax = plt.subplots()
         ax.hist(filtered_df["balance"].dropna(), bins=20)
-        ax.set_xlabel("Balance")
-        ax.set_ylabel("Number of Customers")
-        ax.set_title("Balance Distribution")
+        ax.set_xlabel("账户余额")
+        ax.set_ylabel("客户数量")
+        ax.set_title("账户余额分布")
         st.pyplot(fig)
 
-    st.header("3. Churn Analysis")
+    st.divider()
+
+    st.header("3. 流失风险分析")
 
     if "exited" in filtered_df.columns and len(filtered_df) > 0:
         col1, col2 = st.columns(2)
 
         with col1:
             if "age" in filtered_df.columns:
+                filtered_df = filtered_df.copy()
                 filtered_df["age_group"] = pd.cut(
                     filtered_df["age"],
                     bins=[0, 30, 40, 50, 60, 100],
-                    labels=["30以下", "31-40", "41-50", "51-60", "60以上"]
+                    labels=["30岁以下", "31-40岁", "41-50岁", "51-60岁", "60岁以上"]
                 )
 
                 age_churn = filtered_df.groupby("age_group", observed=False)["exited"].mean()
 
                 fig, ax = plt.subplots()
                 ax.bar(age_churn.index.astype(str), age_churn.values)
-                ax.set_xlabel("Age Group")
-                ax.set_ylabel("Churn Rate")
-                ax.set_title("Churn Rate by Age Group")
+                ax.set_xlabel("年龄段")
+                ax.set_ylabel("流失率")
+                ax.set_title("不同年龄段客户流失率")
                 st.pyplot(fig)
 
         with col2:
@@ -250,9 +257,9 @@ if uploaded_file is not None:
 
                 fig, ax = plt.subplots()
                 ax.bar(geo_churn.index.astype(str), geo_churn.values)
-                ax.set_xlabel("Region")
-                ax.set_ylabel("Churn Rate")
-                ax.set_title("Churn Rate by Region")
+                ax.set_xlabel("地区")
+                ax.set_ylabel("流失率")
+                ax.set_title("不同地区客户流失率")
                 st.pyplot(fig)
 
         col3, col4 = st.columns(2)
@@ -263,9 +270,9 @@ if uploaded_file is not None:
 
                 fig, ax = plt.subplots()
                 ax.bar(product_churn.index.astype(str), product_churn.values)
-                ax.set_xlabel("Number of Products")
-                ax.set_ylabel("Churn Rate")
-                ax.set_title("Churn Rate by Number of Products")
+                ax.set_xlabel("产品持有数量")
+                ax.set_ylabel("流失率")
+                ax.set_title("不同产品持有数量客户流失率")
                 st.pyplot(fig)
 
         with col4:
@@ -274,15 +281,17 @@ if uploaded_file is not None:
 
                 fig, ax = plt.subplots()
                 ax.bar(active_churn.index.astype(str), active_churn.values)
-                ax.set_xlabel("Active Member")
-                ax.set_ylabel("Churn Rate")
-                ax.set_title("Churn Rate by Active Status")
+                ax.set_xlabel("是否活跃客户")
+                ax.set_ylabel("流失率")
+                ax.set_title("不同活跃状态客户流失率")
                 st.pyplot(fig)
 
     else:
         st.warning("当前数据中没有找到流失标签字段，无法进行流失风险分析。")
 
-    st.header("4. Prediction Model")
+    st.divider()
+
+    st.header("4. 预测模型评估")
 
     if "exited" in df.columns:
         model_df = df.copy()
@@ -331,33 +340,35 @@ if uploaded_file is not None:
 
         col1, col2, col3, col4 = st.columns(4)
 
-        col1.metric("Accuracy", f"{accuracy_score(y_test, y_pred):.3f}")
-        col2.metric("Recall", f"{recall_score(y_test, y_pred):.3f}")
-        col3.metric("F1-score", f"{f1_score(y_test, y_pred):.3f}")
-        col4.metric("AUC", f"{roc_auc_score(y_test, y_prob):.3f}")
+        col1.metric("准确率 Accuracy", f"{accuracy_score(y_test, y_pred):.3f}")
+        col2.metric("召回率 Recall", f"{recall_score(y_test, y_pred):.3f}")
+        col3.metric("F1 值", f"{f1_score(y_test, y_pred):.3f}")
+        col4.metric("AUC 值", f"{roc_auc_score(y_test, y_prob):.3f}")
 
-        st.subheader("混淆矩阵 Confusion Matrix")
+        st.caption("召回率在客户流失预测中较为重要，因为银行希望尽可能识别出真正可能流失的客户。")
+
+        st.subheader("混淆矩阵")
 
         cm = confusion_matrix(y_test, y_pred)
         fig, ax = plt.subplots()
         disp = ConfusionMatrixDisplay(confusion_matrix=cm)
         disp.plot(ax=ax)
-        ax.set_title("Confusion Matrix")
+        ax.set_title("混淆矩阵")
         st.pyplot(fig)
 
-        st.subheader("特征重要性 Feature Importance")
+        st.subheader("特征重要性")
 
         importance = pd.DataFrame({
-            "Feature": X.columns,
-            "Importance": model.feature_importances_
-        }).sort_values(by="Importance", ascending=False)
+            "特征": X.columns,
+            "重要性": model.feature_importances_
+        }).sort_values(by="重要性", ascending=False)
 
         st.dataframe(importance)
 
         fig, ax = plt.subplots()
-        ax.barh(importance["Feature"], importance["Importance"])
-        ax.set_xlabel("Importance")
-        ax.set_title("Feature Importance")
+        ax.barh(importance["特征"], importance["重要性"])
+        ax.set_xlabel("重要性")
+        ax.set_title("特征重要性")
         ax.invert_yaxis()
         st.pyplot(fig)
 
@@ -379,15 +390,32 @@ if uploaded_file is not None:
 
         result_df["suggested_action"] = result_df.apply(generate_action, axis=1)
 
-        st.header("5. High-Risk Customer List")
+        high_risk_default_count = (result_df["churn_risk_probability"] >= 0.7).sum()
+
+        st.subheader("预测后客户概览")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        col1.metric("总客户数", len(result_df))
+        col2.metric("高风险客户数", int(high_risk_default_count))
+        col3.metric("平均流失风险", f"{result_df['churn_risk_probability'].mean():.2%}")
+
+        if "balance" in result_df.columns:
+            col4.metric("高价值客户阈值", f"{value_threshold:,.2f}")
+        else:
+            col4.metric("高价值客户阈值", "N/A")
+
+        st.divider()
+
+        st.header("5. 高风险客户名单")
 
         st.subheader("流失风险概率分布")
 
         fig, ax = plt.subplots()
         ax.hist(result_df["churn_risk_probability"], bins=20)
-        ax.set_xlabel("Churn Risk Probability")
-        ax.set_ylabel("Number of Customers")
-        ax.set_title("Churn Risk Probability Distribution")
+        ax.set_xlabel("流失风险概率")
+        ax.set_ylabel("客户数量")
+        ax.set_title("流失风险概率分布")
         st.pyplot(fig)
 
         st.subheader("Top 10 高风险客户")
@@ -404,13 +432,13 @@ if uploaded_file is not None:
 
         fig, ax = plt.subplots()
         ax.bar(x_values, top10["churn_risk_probability"])
-        ax.set_xlabel("Customer ID")
-        ax.set_ylabel("Churn Risk Probability")
-        ax.set_title("Top 10 High-Risk Customers")
+        ax.set_xlabel("客户 ID")
+        ax.set_ylabel("流失风险概率")
+        ax.set_title("Top 10 高风险客户")
         plt.xticks(rotation=45)
         st.pyplot(fig)
 
-        st.subheader("高风险客户识别与导出")
+        st.subheader("高风险客户筛选与导出")
 
         risk_threshold = st.slider(
             "选择高风险阈值",
@@ -434,7 +462,24 @@ if uploaded_file is not None:
         ).head(top_n)
 
         st.write(f"当前筛选出 {len(high_risk)} 名高风险客户。")
-        st.dataframe(high_risk)
+
+        display_cols = [
+            "customerid",
+            "geography",
+            "gender",
+            "age",
+            "creditscore",
+            "balance",
+            "numofproducts",
+            "isactivemember",
+            "churn_risk_probability",
+            "customer_segment",
+            "suggested_action"
+        ]
+
+        display_cols = [col for col in display_cols if col in high_risk.columns]
+
+        st.dataframe(high_risk[display_cols])
 
         csv = high_risk.to_csv(index=False).encode("utf-8-sig")
 
@@ -460,15 +505,17 @@ if uploaded_file is not None:
             with col2:
                 fig, ax = plt.subplots()
                 ax.bar(segment_count.index.astype(str), segment_count.values)
-                ax.set_xlabel("Customer Segment")
-                ax.set_ylabel("Number of Customers")
-                ax.set_title("Customer Segmentation")
+                ax.set_xlabel("客户类型")
+                ax.set_ylabel("客户数量")
+                ax.set_title("客户分层结果")
                 plt.xticks(rotation=30)
                 st.pyplot(fig)
 
-        st.header("6. Business Recommendations")
+        st.divider()
 
-        st.write("本系统根据客户流失概率、账户余额、活跃状态、产品数量和年龄生成客户维护建议。")
+        st.header("6. 业务建议")
+
+        st.write("系统根据客户流失风险、账户余额、活跃状态、产品持有数量和年龄生成客户维护建议。")
 
         st.write("1. 对高风险高价值客户，优先安排客户经理回访。")
         st.write("2. 对高风险但不活跃客户，建议发送激活活动或优惠信息。")
